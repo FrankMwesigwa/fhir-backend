@@ -1,5 +1,7 @@
 package com.emr.moh.controller;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import org.hl7.fhir.r4.model.Bundle;
@@ -10,7 +12,6 @@ import org.hl7.fhir.r4.model.Patient;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -53,8 +54,6 @@ public class PersonController {
                 .setCity(person.getCity())
                 .setPostalCode(person.getPostalCode());
 
-        // patient.getManagingOrganization().setReference("http://example.com/base/Organization/FOO");
-
         switch (person.getGender()) {
             case "male" -> patient.setGender(Enumerations.AdministrativeGender.MALE);
             case "female" -> patient.setGender(Enumerations.AdministrativeGender.FEMALE);
@@ -74,30 +73,7 @@ public class PersonController {
         return new ResponseEntity<>(outcome.getCreated(), HttpStatus.CREATED);
     }
 
-    @GetMapping("/persons")
-    public ResponseEntity<?> getPatient() {
-
-        FhirContext ctx = FhirContext.forR4();
-        String serverBase = "http://localhost:8080/fhir";
-        IGenericClient client = ctx.newRestfulGenericClient(serverBase);
-
-        try {
-            Bundle results = client
-                    .search()
-                    .forResource(Patient.class)
-                    .where(Patient.FAMILY.matches().value("Frank"))
-                    .returnBundle(Bundle.class)
-                    .execute();
-
-            System.out.println(client);
-
-            return new ResponseEntity<>(results.getEntry().size(), HttpStatus.OK);
-        } catch (Exception e) {
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    @GetMapping("/person/name")
+    @GetMapping("/person")
     public ResponseEntity<?> getPerson() {
 
         FhirContext ctx = FhirContext.forR4();
@@ -105,46 +81,37 @@ public class PersonController {
         IGenericClient client = ctx.newRestfulGenericClient(serverBase);
         IParser parser = ctx.newJsonParser();
 
+        List<Patient> patients = new ArrayList<>();
+
+        try {
             Bundle response = client.search()
                     .forResource(Patient.class)
-                    .where(Patient.FAMILY.matches().values("deo"))
+                    // .where(Patient.FAMILY.matches().values("oldman"))
                     .returnBundle(Bundle.class)
                     .execute();
 
-            System.out.println("Found " + response.getTotal());
+            System.out.println("Patients Size ================ " + response.getEntry().size());
+
+            parser.encodeResourceToString(response);
 
             for (BundleEntryComponent entry : response.getEntry()) {
-			
-                String jsonEncoded = parser.encodeResourceToString(entry.getResource());
-    
-                System.out.println("-------------------------------------------------------------------");
-                System.out.println(jsonEncoded);
-                
-                Patient patient = FhirContext.forR4().newJsonParser().parseResource(Patient.class, jsonEncoded);
-                
-                System.out.println(patient.getName().toString());
-                System.out.println(patient.getGender());
-                System.out.println(patient.getBirthDate());
-                System.out.println(patient.getAddress());
-                
-                String formatedName = patient.getNameFirstRep().getGivenAsSingleString()+" "+patient.getNameFirstRep().getNameAsSingleString();
-                
-                String formatedAdderess = 
-                        patient.getAddressFirstRep().getCountry()+ ", "+
-                        patient.getAddressFirstRep().getCity()+ " "+
-                        "("+patient.getAddressFirstRep().getPostalCode()+")";
-    
-                String formatedID = patient.getIdentifierFirstRep().getValue();	
-                
-                
-                // result+= "ID: "+formatedID+System.lineSeparator();
-                // result+= "Active: "+patient.getActive()+System.lineSeparator();
-                // result+= "Name: "+formatedName+System.lineSeparator();
-                // result+= "Birth Date: "+patient.getBirthDate()+System.lineSeparator();
-                // result+= "Aderess: "+formatedAdderess+System.lineSeparator();	
-            }
-        
-        return new ResponseEntity<>(response, HttpStatus.OK);
-    }
+                Patient patient = (Patient) entry.getResource();
+                // patientRepository.save(patient);
 
+                String jsonEncoded = parser.setPrettyPrint(true).encodeResourceToString(patient);
+                Patient person = parser.parseResource(Patient.class, jsonEncoded);
+
+                String firstName = person.getNameFirstRep().getGivenAsSingleString();
+                String city = patient.getAddressFirstRep().getCity();
+
+                System.out.println("First Name =>>>>>>>>> " + firstName);
+                System.out.println("City =>>>>>>>>> " + city);
+            }
+
+            return new ResponseEntity<>("Records Saved in DB", HttpStatus.OK);
+
+        } catch (Exception e) {
+            return new ResponseEntity<>("Error!, Please try again", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 }
