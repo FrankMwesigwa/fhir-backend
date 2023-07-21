@@ -1,9 +1,6 @@
 package com.emr.moh.modal;
-import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
-import org.hl7.fhir.r4.model.ContactPoint;
-import org.hl7.fhir.r4.model.HumanName;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.StringType;
 

@@ -25,6 +25,9 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @RestController
 @RequestMapping("/api")
@@ -120,26 +123,19 @@ public class PersonController {
         try {
             Bundle response = client.search()
                     .forResource(Patient.class)
-                    //.where(Patient.FAMILY.matches().values("Deo", "Katesigwa","Oldman"))
+                    // .where(Patient.FAMILY.matches().values("Deo", "Katesigwa","Oldman"))
                     // .where(new StringClientParam("given").matches().value("oldman"))
                     .where(Patient.GIVEN.matches().value("old"))
                     .returnBundle(Bundle.class)
                     .execute();
 
             List<BundleEntryComponent> list = response.getEntry(); // extract entries
-            List<Person> persons = list.stream().map(new Function<BundleEntryComponent, Patient>() {
-                public Patient apply(BundleEntryComponent t) {
-                    return (Patient) t.getResource();
-                }
-            }) // convert each entry to a resource inthis case its Patient
-                    .map(new Function<Patient, Person>() {
-                        // patient -> Person.convertFHIRPatientToPerson(patient)
-                        public Person apply(Patient t) {
-                            return Person.convertFHIRPatientToPerson(t);
-                        }
-                    }) // convert each patient resource into our Person Modal
-                    .toList() // collection our converted Persons
-            ;
+            
+            List<Person> persons = list.stream()
+                    .map(t -> (Patient) t.getResource()) // convert each entry to a resource inthis case its Patient
+                    .map(Person::convertFHIRPatientToPerson) // convert each patient resource into our Person Modal
+                    .toList(); // collection our converted Persons
+
             System.out.println(persons);
 
             return new ResponseEntity<>(persons, HttpStatus.OK);
