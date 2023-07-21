@@ -1,14 +1,14 @@
 package com.emr.moh.controller;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Function;
 
 import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
 import org.hl7.fhir.r4.model.ContactPoint;
 import org.hl7.fhir.r4.model.Enumerations;
 import org.hl7.fhir.r4.model.Patient;
+import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.emr.moh.modal.Person;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
@@ -74,44 +76,76 @@ public class PersonController {
     }
 
     @GetMapping("/person")
-    public ResponseEntity<?> getPerson() {
+    public ResponseEntity<JsonNode> getPerson() {
 
         FhirContext ctx = FhirContext.forR4();
         String serverBase = "http://localhost:8080/fhir";
         IGenericClient client = ctx.newRestfulGenericClient(serverBase);
         IParser parser = ctx.newJsonParser();
 
-        List<Patient> patients = new ArrayList<>();
-
         try {
             Bundle response = client.search()
                     .forResource(Patient.class)
-                    // .where(Patient.FAMILY.matches().values("oldman"))
+                    // .where(new StringClientParam("given").matches().value("oldman"))
+                    .where(Patient.GIVEN.matches().value("old"))
                     .returnBundle(Bundle.class)
                     .execute();
 
             System.out.println("Patients Size ================ " + response.getEntry().size());
 
-            parser.encodeResourceToString(response);
+            String responseString = parser.encodeResourceToString(response);
+            ObjectMapper objectMapper = new ObjectMapper();
 
-            for (BundleEntryComponent entry : response.getEntry()) {
-                Patient patient = (Patient) entry.getResource();
-                // patientRepository.save(patient);
+            JsonNode jsonNode = null;
 
-                String jsonEncoded = parser.setPrettyPrint(true).encodeResourceToString(patient);
-                Patient person = parser.parseResource(Patient.class, jsonEncoded);
-
-                String firstName = person.getNameFirstRep().getGivenAsSingleString();
-                String city = patient.getAddressFirstRep().getCity();
-
-                System.out.println("First Name =>>>>>>>>> " + firstName);
-                System.out.println("City =>>>>>>>>> " + city);
+            try {
+                jsonNode = objectMapper.readTree(responseString);
+            } catch (Exception e) {
+                // TODO: handle exception
             }
 
-            return new ResponseEntity<>("Records Saved in DB", HttpStatus.OK);
+            return new ResponseEntity<>(jsonNode, HttpStatus.OK);
 
         } catch (Exception e) {
-            return new ResponseEntity<>("Error!, Please try again", HttpStatus.INTERNAL_SERVER_ERROR);
+            throw e;
         }
+    }
+
+    @GetMapping("/persons")
+    public ResponseEntity<List<Person>> getPersons() {
+        FhirContext ctx = FhirContext.forR4();
+        String serverBase = "http://localhost:8080/fhir";
+        IGenericClient client = ctx.newRestfulGenericClient(serverBase);
+
+        try {
+            Bundle response = client.search()
+                    .forResource(Patient.class)
+                    //.where(Patient.FAMILY.matches().values("Deo", "Katesigwa","Oldman"))
+                    // .where(new StringClientParam("given").matches().value("oldman"))
+                    .where(Patient.GIVEN.matches().value("old"))
+                    .returnBundle(Bundle.class)
+                    .execute();
+
+            List<BundleEntryComponent> list = response.getEntry(); // extract entries
+            List<Person> persons = list.stream().map(new Function<BundleEntryComponent, Patient>() {
+                public Patient apply(BundleEntryComponent t) {
+                    return (Patient) t.getResource();
+                }
+            }) // convert each entry to a resource inthis case its Patient
+                    .map(new Function<Patient, Person>() {
+                        // patient -> Person.convertFHIRPatientToPerson(patient)
+                        public Person apply(Patient t) {
+                            return Person.convertFHIRPatientToPerson(t);
+                        }
+                    }) // convert each patient resource into our Person Modal
+                    .toList() // collection our converted Persons
+            ;
+            System.out.println(persons);
+
+            return new ResponseEntity<>(persons, HttpStatus.OK);
+        } catch (Exception e) {
+            throw e;
+        }
+
     }
 }
