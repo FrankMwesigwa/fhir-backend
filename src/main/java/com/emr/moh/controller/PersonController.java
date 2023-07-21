@@ -2,13 +2,13 @@ package com.emr.moh.controller;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Function;
 
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.ContactPoint;
 import org.hl7.fhir.r4.model.Enumerations;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.emr.moh.modal.Person;
+import com.emr.moh.repository.PersonRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -25,13 +26,13 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @RestController
 @RequestMapping("/api")
 public class PersonController {
+
+    @Autowired
+    PersonRepository personRepository;
 
     @PostMapping("/person")
     public ResponseEntity<?> addPerson(@RequestBody Person person) {
@@ -114,6 +115,7 @@ public class PersonController {
         }
     }
 
+    
     @GetMapping("/persons")
     public ResponseEntity<List<Person>> getPersons() {
         FhirContext ctx = FhirContext.forR4();
@@ -130,13 +132,14 @@ public class PersonController {
                     .execute();
 
             List<BundleEntryComponent> list = response.getEntry(); // extract entries
-            
+
             List<Person> persons = list.stream()
                     .map(t -> (Patient) t.getResource()) // convert each entry to a resource inthis case its Patient
                     .map(Person::convertFHIRPatientToPerson) // convert each patient resource into our Person Modal
                     .toList(); // collection our converted Persons
 
             System.out.println(persons);
+            personRepository.saveAll(persons);
 
             return new ResponseEntity<>(persons, HttpStatus.OK);
         } catch (Exception e) {
