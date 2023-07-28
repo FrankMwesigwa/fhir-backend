@@ -38,7 +38,7 @@ public class PersonController {
     public ResponseEntity<?> addPerson(@RequestBody Person person) {
 
         FhirContext ctx = FhirContext.forR4();
-        String serverBase = "http://localhost:8080/fhir";
+        String serverBase = "http://165.232.114.52:8080/fhir";
         IGenericClient client = ctx.newRestfulGenericClient(serverBase);
 
         Patient patient = new Patient();
@@ -49,14 +49,15 @@ public class PersonController {
         patient.setBirthDate(person.getBirthDate());
 
         patient.addName()
-                .setText(person.getFname())
-                .addGiven(person.getLname())
-                .addGiven(person.getOtherNames());
+                .setText(person.getFirstName())
+                .addGiven(person.getLastName())
+                .addGiven(person.getOtherName());
 
-        patient.addTelecom().setSystem(ContactPoint.ContactPointSystem.PHONE).setValue(person.getMobileNo());
+        patient.addTelecom().setSystem(ContactPoint.ContactPointSystem.PHONE).setValue(person.getPhoneNumber());
         patient.addTelecom().setSystem(ContactPoint.ContactPointSystem.EMAIL).setValue(person.getEmail());
 
-        patient.addAddress().setState(person.getState())
+        patient.addAddress()
+                .setState(person.getVillage())
                 .setCity(person.getCity())
                 .setPostalCode(person.getPostalCode());
 
@@ -83,7 +84,7 @@ public class PersonController {
     public ResponseEntity<JsonNode> getPerson() {
 
         FhirContext ctx = FhirContext.forR4();
-        String serverBase = "http://localhost:8080/fhir";
+        String serverBase = "http://165.232.114.52:8080/fhir";
         IGenericClient client = ctx.newRestfulGenericClient(serverBase);
         IParser parser = ctx.newJsonParser();
 
@@ -91,7 +92,7 @@ public class PersonController {
             Bundle response = client.search()
                     .forResource(Patient.class)
                     // .where(new StringClientParam("given").matches().value("oldman"))
-                    .where(Patient.GIVEN.matches().value("old"))
+                    // .where(Patient.GIVEN.matches().value("old"))
                     .returnBundle(Bundle.class)
                     .execute();
 
@@ -115,11 +116,10 @@ public class PersonController {
         }
     }
 
-    
     @GetMapping("/persons")
     public ResponseEntity<List<Person>> getPersons() {
         FhirContext ctx = FhirContext.forR4();
-        String serverBase = "http://localhost:8080/fhir";
+        String serverBase = "http://165.232.114.52:8080/fhir";
         IGenericClient client = ctx.newRestfulGenericClient(serverBase);
 
         try {
