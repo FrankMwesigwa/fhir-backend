@@ -27,6 +27,7 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
+import ca.uhn.fhir.rest.gclient.StringClientParam;
 
 @RestController
 @RequestMapping("/api")
@@ -126,7 +127,8 @@ public class PersonController {
         try {
             Bundle response = client.search()
                     .forResource(Patient.class)
-                    .where(Patient.FAMILY.matches().values(query))
+                    .where(new StringClientParam("name").matches().value(query))
+				// .where(new StringClientParam("family").matches().value(query))
                     // .where(new StringClientParam("given").matches().value("oldman"))
                     // .where(Patient.GIVEN.matches().value(query))
                     .returnBundle(Bundle.class)
