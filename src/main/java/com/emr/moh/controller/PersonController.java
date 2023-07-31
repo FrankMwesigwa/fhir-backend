@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.emr.moh.modal.Person;
@@ -117,7 +118,7 @@ public class PersonController {
     }
 
     @GetMapping("/persons")
-    public ResponseEntity<List<Person>> getPersons() {
+    public ResponseEntity<List<Person>> getPersons(@RequestParam("query") String query) {
         FhirContext ctx = FhirContext.forR4();
         String serverBase = "http://165.232.114.52:8080/fhir";
         IGenericClient client = ctx.newRestfulGenericClient(serverBase);
@@ -125,9 +126,9 @@ public class PersonController {
         try {
             Bundle response = client.search()
                     .forResource(Patient.class)
-                    // .where(Patient.FAMILY.matches().values("Deo", "Katesigwa","Oldman"))
+                    .where(Patient.FAMILY.matches().values(query))
                     // .where(new StringClientParam("given").matches().value("oldman"))
-                    .where(Patient.GIVEN.matches().value("old"))
+                    // .where(Patient.GIVEN.matches().value(query))
                     .returnBundle(Bundle.class)
                     .execute();
 
@@ -138,8 +139,7 @@ public class PersonController {
                     .map(Person::convertFHIRPatientToPerson) // convert each patient resource into our Person Modal
                     .toList(); // collection our converted Persons
 
-            System.out.println(persons);
-            personRepository.saveAll(persons);
+            // personRepository.saveAll(persons);
 
             return new ResponseEntity<>(persons, HttpStatus.OK);
         } catch (Exception e) {

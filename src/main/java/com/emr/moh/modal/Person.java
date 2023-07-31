@@ -50,20 +50,15 @@ public class Person {
     public static Person convertFHIRPatientToPerson(Patient patient) {
         Person person = new Person();
         person.setFirstName(patient.getNameFirstRep().getText());
-        // person.setLname(patient.getNameFirstRep().getGiven().stream().findFirst().isPresent()
-        // ?
-        // patient.getNameFirstRep().getGiven().stream().findFirst().get().asStringValue()
-        // : "");
-        // person.setId(patient.getIdElement().primitiveValue());
         person.setLastName(extractNameFromFhirNames(patient.getNameFirstRep().getGiven(), 0));
         person.setOtherName(extractNameFromFhirNames(patient.getNameFirstRep().getGiven(), 1));
-        person.setPhoneNumber(patient.getTelecom().get(0).getValue());
-        person.setEmail(patient.getTelecom().get(1).getValue());
+        // person.setPhoneNumber(patient.getTelecom().get(0).getValue());
+        // person.setEmail(patient.getTelecom().get(1).getValue());
         person.setVillage(patient.getAddress().stream().findFirst().get().getState());
         person.setPostalCode(patient.getAddress().stream().findFirst().get().getPostalCode());
         person.setCity(patient.getAddress().stream().findFirst().get().getCity());
         person.setBirthDate(Date.from(patient.getBirthDate().toInstant()));
-        person.setGender(patient.getGender().name());
+        // person.setGender(patient.getGender().name());
         person.setDeceased(patient.getDeceasedBooleanType().getValue());
         return person;
     }
