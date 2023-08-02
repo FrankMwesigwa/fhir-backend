@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.UUID;
 
 import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.ContactPoint;
 import org.hl7.fhir.r4.model.Enumerations;
 import org.hl7.fhir.r4.model.Identifier;
@@ -51,8 +50,6 @@ public class PersonController {
         Identifier nationId = new Identifier();
         Identifier systemId = new Identifier();
 
-        CodeableConcept maritalStatus = new CodeableConcept();
-
         patient.setActive(true);
         patient.setId(UUID.randomUUID().toString());
 
@@ -66,10 +63,6 @@ public class PersonController {
         patient.addIdentifier(systemId);
 
         patient.setBirthDate(person.getBirthDate());
-        // patient.setMaritalStatus(maritalStatus(person.getMaritalStatus()));
-        // patient.setDeceased(person.getDec);
-
-        patient.setMaritalStatus(person.getMaritalStatus());
 
         patient.addName()
                 .setText(person.getSurname())
