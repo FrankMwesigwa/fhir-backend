@@ -1,5 +1,6 @@
 package com.emr.moh.modal;
 
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -27,40 +28,52 @@ public class Person {
     @GenericGenerator(name = "System-uuid", strategy = "uuid")
 
     private String id;
-    private String firstName;
-    private String lastName;
-    private String otherName;
+    private String uniquePatientId;
+    private String nationalId;
+    private String passport;
+    private String systemId;
+    private String surname;
+    private String givenname;
+    private String othername;
     // @Column(unique = true)
     private String email;
     private String phoneNumber;
-    private String village;
-    private String city;
     private String address;
+    private String village;
+    private String parish;
+    private String subCounty;
+    private String district;
     private String postalCode;
     private String gender;
-    private Boolean deceased;
+    private boolean deceased;
     private Date birthDate;
     private String maritalStatus;
 
     public static String extractNameFromFhirNames(List<StringType> stringType, int index) {
-        boolean check = stringType.size() == index + 1; // check if index exists
+        boolean check = stringType.size() >= 0; // check if index exists
         return check ? stringType.get(index).asStringValue() : "";
     }
 
     public static Person convertFHIRPatientToPerson(Patient patient) {
         Person person = new Person();
         person.setId(patient.getId());
-        person.setFirstName(patient.getNameFirstRep().getText());
-        person.setLastName(extractNameFromFhirNames(patient.getNameFirstRep().getGiven(), 0));
-        person.setOtherName(extractNameFromFhirNames(patient.getNameFirstRep().getGiven(), 1));
+        person.setPassport(patient.getIdentifier().get(0).getValue());
+        person.setNationalId(patient.getIdentifier().get(1).getValue());
+        person.setSystemId(patient.getIdentifier().get(2).getValue());
+        person.setSurname(patient.getNameFirstRep().getText());
+        person.setGivenname(extractNameFromFhirNames(patient.getNameFirstRep().getGiven(), 0));
+        person.setOthername(extractNameFromFhirNames(patient.getNameFirstRep().getGiven(), 1));
         person.setPhoneNumber(patient.getTelecomFirstRep().getValue());
-        person.setVillage(patient.getAddress().stream().findFirst().get().getState());
+        // person.setAddress(patient.getAddress().get(0).getLine().get(0).getValue(););
         person.setPostalCode(patient.getAddress().stream().findFirst().get().getPostalCode());
-        person.setCity(patient.getAddress().stream().findFirst().get().getCity());
-        person.setBirthDate(Date.from(patient.getBirthDate().toInstant()));
-        person.setDeceased(patient.getDeceasedBooleanType().getValue());
-        if (!patient.getGender().toString().isEmpty()) {
-            person.setGender(patient.getGender().toString());
+        person.setDistrict(patient.getAddress().stream().findFirst().get().getDistrict());
+        person.setSubCounty(patient.getAddress().stream().findFirst().get().getCity());
+        person.setVillage(patient.getAddress().stream().findFirst().get().getState());
+        person.setParish(patient.getAddress().stream().findFirst().get().getCountry());
+        person.setBirthDate(patient.getBirthDate());
+        person.setMaritalStatus(patient.getMaritalStatus().getText());
+        if (patient.getGender().toString() != null) {
+           person.setGender(patient.getGender().toCode());
         }
         if (!patient.getTelecom().toString().isEmpty()) {
             person.setEmail(patient.getTelecom().get(1).getValue());
@@ -68,34 +81,34 @@ public class Person {
         return person;
     }
 
-    public static Patient convertJsonToFHIR(Person person) {
+    // public static Patient convertJsonToFHIR(Person person) {
 
-        Patient patient = new Patient();
+    //     Patient patient = new Patient();
 
-        patient.setId(UUID.randomUUID().toString());
-        patient.addIdentifier().setSystem("http://acme.com/MRNs").setValue("frank-emr");
-        patient.setActive(true);
-        patient.setBirthDate(person.getBirthDate());
+    //     patient.setId(UUID.randomUUID().toString());
+    //     patient.addIdentifier().setSystem("http://acme.com/MRNs").setValue("frank-emr");
+    //     patient.setActive(true);
+    //     patient.setBirthDate(person.getBirthDate());
 
-        patient.addName()
-                .setText(person.getFirstName())
-                .addGiven(person.getLastName())
-                .addGiven(person.getOtherName());
+    //     patient.addName()
+    //             .setText(person.getFirstName())
+    //             .addGiven(person.getLastName())
+    //             .addGiven(person.getOtherName());
 
-        patient.addTelecom().setSystem(ContactPoint.ContactPointSystem.PHONE).setValue(person.getPhoneNumber());
-        patient.addTelecom().setSystem(ContactPoint.ContactPointSystem.EMAIL).setValue(person.getEmail());
+    //     patient.addTelecom().setSystem(ContactPoint.ContactPointSystem.PHONE).setValue(person.getPhoneNumber());
+    //     patient.addTelecom().setSystem(ContactPoint.ContactPointSystem.EMAIL).setValue(person.getEmail());
 
-        patient.addAddress().setState(person.getVillage())
-                .setCity(person.getCity())
-                .setPostalCode(person.getPostalCode());
+    //     patient.addAddress().setState(person.getVillage())
+    //             .setCity(person.getCity())
+    //             .setPostalCode(person.getPostalCode());
 
-        switch (person.getGender()) {
-            case "male" -> patient.setGender(Enumerations.AdministrativeGender.MALE);
-            case "female" -> patient.setGender(Enumerations.AdministrativeGender.FEMALE);
-            case "others" -> patient.setGender(Enumerations.AdministrativeGender.OTHER);
-        }
+    //     switch (person.getGender()) {
+    //         case "male" -> patient.setGender(Enumerations.AdministrativeGender.MALE);
+    //         case "female" -> patient.setGender(Enumerations.AdministrativeGender.FEMALE);
+    //         case "others" -> patient.setGender(Enumerations.AdministrativeGender.OTHER);
+    //     }
 
-        return patient;
+    //     return patient;
 
-    }
+    // }
 }

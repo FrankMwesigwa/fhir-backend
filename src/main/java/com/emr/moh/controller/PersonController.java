@@ -4,8 +4,10 @@ import java.util.List;
 import java.util.UUID;
 
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.ContactPoint;
 import org.hl7.fhir.r4.model.Enumerations;
+import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,33 +42,55 @@ public class PersonController {
     public ResponseEntity<?> addPerson(@RequestBody Person person) {
 
         FhirContext ctx = FhirContext.forR4();
-        String serverBase = "http://165.232.114.52:8080/fhir";
+        String serverBase = "https://hapi-hris.health.go.ug/hapi/fhir";
         IGenericClient client = ctx.newRestfulGenericClient(serverBase);
 
         Patient patient = new Patient();
 
-        patient.setId(UUID.randomUUID().toString());
-        patient.addIdentifier().setSystem("http://acme.com/MRNs").setValue("frank-emr");
+        Identifier passport = new Identifier();
+        Identifier nationId = new Identifier();
+        Identifier systemId = new Identifier();
+
+        CodeableConcept maritalStatus = new CodeableConcept();
+
         patient.setActive(true);
+        patient.setId(UUID.randomUUID().toString());
+
+        passport.setSystem("http://acme.com/MRNs").setValue(person.getPassport());
+        patient.addIdentifier(passport);
+
+        nationId.setSystem("http://acme.com/MRNs").setValue(person.getNationalId());
+        patient.addIdentifier(nationId);
+
+        systemId.setSystem("http://acme.com/MRNs").setValue(person.getSystemId());
+        patient.addIdentifier(systemId);
+
         patient.setBirthDate(person.getBirthDate());
+        // patient.setMaritalStatus(maritalStatus(person.getMaritalStatus()));
+        // patient.setDeceased(person.getDec);
+
+        patient.setMaritalStatus(person.getMaritalStatus());
 
         patient.addName()
-                .setText(person.getFirstName())
-                .addGiven(person.getLastName())
-                .addGiven(person.getOtherName());
+                .setText(person.getSurname())
+                .addGiven(person.getGivenname())
+                .addGiven(person.getOthername());
 
         patient.addTelecom().setSystem(ContactPoint.ContactPointSystem.PHONE).setValue(person.getPhoneNumber());
         patient.addTelecom().setSystem(ContactPoint.ContactPointSystem.EMAIL).setValue(person.getEmail());
 
         patient.addAddress()
+                .setText(person.getAddress())
                 .setState(person.getVillage())
-                .setCity(person.getCity())
+                .setCity(person.getSubCounty())
+                .setDistrict(person.getDistrict())
+                .setCountry(person.getParish())
                 .setPostalCode(person.getPostalCode());
 
         switch (person.getGender()) {
-            case "male" -> patient.setGender(Enumerations.AdministrativeGender.MALE);
-            case "female" -> patient.setGender(Enumerations.AdministrativeGender.FEMALE);
-            case "others" -> patient.setGender(Enumerations.AdministrativeGender.OTHER);
+            case "Male" -> patient.setGender(Enumerations.AdministrativeGender.MALE);
+            case "Female" -> patient.setGender(Enumerations.AdministrativeGender.FEMALE);
+            case "Others" -> patient.setGender(Enumerations.AdministrativeGender.OTHER);
         }
 
         String encoded = ctx.newJsonParser().setPrettyPrint(true).encodeResourceToString(patient);
@@ -86,7 +110,7 @@ public class PersonController {
     public ResponseEntity<JsonNode> getPerson() {
 
         FhirContext ctx = FhirContext.forR4();
-        String serverBase = "http://165.232.114.52:8080/fhir";
+        String serverBase = "https://hapi-hris.health.go.ug/hapi/fhir";
         IGenericClient client = ctx.newRestfulGenericClient(serverBase);
         IParser parser = ctx.newJsonParser();
 
@@ -121,16 +145,14 @@ public class PersonController {
     @GetMapping("/persons")
     public ResponseEntity<List<Person>> getPersons(@RequestParam("query") String query) {
         FhirContext ctx = FhirContext.forR4();
-        String serverBase = "http://165.232.114.52:8080/fhir";
+        String serverBase = "https://hapi-hris.health.go.ug/hapi/fhir";
         IGenericClient client = ctx.newRestfulGenericClient(serverBase);
 
         try {
             Bundle response = client.search()
                     .forResource(Patient.class)
                     .where(new StringClientParam("name").matches().value(query))
-				// .where(new StringClientParam("family").matches().value(query))
                     // .where(new StringClientParam("given").matches().value("oldman"))
-                    // .where(Patient.GIVEN.matches().value(query))
                     .returnBundle(Bundle.class)
                     .execute();
 
