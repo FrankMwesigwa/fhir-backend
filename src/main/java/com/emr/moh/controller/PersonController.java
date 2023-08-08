@@ -41,7 +41,8 @@ public class PersonController {
     public ResponseEntity<?> addPerson(@RequestBody Person person) {
 
         FhirContext ctx = FhirContext.forR4();
-        String serverBase = "https://hapi-hris.health.go.ug/hapi/fhir";
+        // String serverBase = "https://hapi-hris.health.go.ug/hapi/fhir";
+        String serverBase = "http://165.232.114.52:8080/fhir";
         IGenericClient client = ctx.newRestfulGenericClient(serverBase);
 
         Patient patient = new Patient();
@@ -103,7 +104,8 @@ public class PersonController {
     public ResponseEntity<JsonNode> getPerson() {
 
         FhirContext ctx = FhirContext.forR4();
-        String serverBase = "https://hapi-hris.health.go.ug/hapi/fhir";
+        // String serverBase = "https://hapi-hris.health.go.ug/hapi/fhir";
+        String serverBase = "http://165.232.114.52:8080/fhir";
         IGenericClient client = ctx.newRestfulGenericClient(serverBase);
         IParser parser = ctx.newJsonParser();
 
@@ -138,7 +140,8 @@ public class PersonController {
     @GetMapping("/persons")
     public ResponseEntity<List<Person>> getPersons(@RequestParam("query") String query) {
         FhirContext ctx = FhirContext.forR4();
-        String serverBase = "https://hapi-hris.health.go.ug/hapi/fhir";
+        // String serverBase = "https://hapi-hris.health.go.ug/hapi/fhir";
+        String serverBase = "http://165.232.114.52:8080/fhir";
         IGenericClient client = ctx.newRestfulGenericClient(serverBase);
 
         try {
