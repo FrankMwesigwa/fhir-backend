@@ -50,6 +50,7 @@ public class PersonController {
         Identifier passport = new Identifier();
         Identifier nationId = new Identifier();
         Identifier systemId = new Identifier();
+        Identifier patientId = new Identifier();
 
         patient.setActive(true);
         patient.setId(UUID.randomUUID().toString());
@@ -62,6 +63,9 @@ public class PersonController {
 
         systemId.setSystem("http://acme.com/MRNs").setValue(person.getSystemId());
         patient.addIdentifier(systemId);
+
+        patientId.setSystem("http://acme.com/MRNs").setValue(person.getPatientId());
+        patient.addIdentifier(patientId);
 
         patient.setBirthDate(person.getBirthDate());
 

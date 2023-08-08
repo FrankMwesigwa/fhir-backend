@@ -32,6 +32,7 @@ public class Person {
     private String nationalId;
     private String passport;
     private String systemId;
+    private String patientId;
     private String surname;
     private String givenname;
     private String othername;
@@ -60,6 +61,7 @@ public class Person {
         person.setPassport(patient.getIdentifier().get(0).getValue());
         person.setNationalId(patient.getIdentifier().get(1).getValue());
         person.setSystemId(patient.getIdentifier().get(2).getValue());
+        person.setPatientId(patient.getIdentifier().get(3).getValue());
         person.setSurname(patient.getNameFirstRep().getText());
         person.setGivenname(extractNameFromFhirNames(patient.getNameFirstRep().getGiven(), 0));
         person.setOthername(extractNameFromFhirNames(patient.getNameFirstRep().getGiven(), 1));
