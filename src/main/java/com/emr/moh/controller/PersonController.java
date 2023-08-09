@@ -9,6 +9,7 @@ import org.hl7.fhir.r4.model.Enumerations;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
+import org.hl7.fhir.r4.model.CodeableConcept;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +34,15 @@ import ca.uhn.fhir.rest.gclient.StringClientParam;
 @RestController
 @RequestMapping("/api")
 public class PersonController {
+
+    private static CodeableConcept createMaritalStatus(String code, String display) {
+        CodeableConcept maritalStatus = new CodeableConcept();
+        maritalStatus.addCoding()
+                .setSystem("http://hl7.org/fhir/ValueSet/marital-status")
+                .setCode(code)
+                .setDisplay(display);
+        return maritalStatus;
+    }
 
     @Autowired
     PersonRepository personRepository;
@@ -78,7 +88,7 @@ public class PersonController {
         patient.addTelecom().setSystem(ContactPoint.ContactPointSystem.EMAIL).setValue(person.getEmail());
 
         patient.addAddress()
-                .setText(person.getAddress())
+                .addLine(person.getAddress())
                 .setState(person.getVillage())
                 .setCity(person.getSubCounty())
                 .setDistrict(person.getDistrict())
@@ -91,6 +101,21 @@ public class PersonController {
             case "Others" -> patient.setGender(Enumerations.AdministrativeGender.OTHER);
         }
 
+        switch (person.getMaritalStatus()) {
+            case "Married":
+                patient.setMaritalStatus(createMaritalStatus("M", "Married"));
+                break;
+            case "Single":
+                patient.setMaritalStatus(createMaritalStatus("S", "Single"));
+                break;
+            case "Divorced":
+                patient.setMaritalStatus(createMaritalStatus("D", "Divorced"));
+                break;
+            default:
+                // Handle other cases or defaults if needed
+                break;
+        }
+
         String encoded = ctx.newJsonParser().setPrettyPrint(true).encodeResourceToString(patient);
         System.out.println(encoded);
 
@@ -100,8 +125,14 @@ public class PersonController {
                 .encodedJson()
                 .execute();
 
-        System.out.println(patient);
-        return new ResponseEntity<>(outcome.getCreated(), HttpStatus.CREATED);
+        if (outcome.getCreated()) {
+            System.out.println("New Patient created with ID: " + outcome.getId().getValue());
+            return new ResponseEntity<>("Patient Resource Successfully Created", HttpStatus.CREATED);
+        } else {
+            System.out.println("Failed to create Patient resource.");
+            return new ResponseEntity<>("Failed to create Patient resource.", HttpStatus.BAD_REQUEST);
+        }
+
     }
 
     @GetMapping("/person")

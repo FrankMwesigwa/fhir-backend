@@ -66,14 +66,14 @@ public class Person {
         person.setGivenname(extractNameFromFhirNames(patient.getNameFirstRep().getGiven(), 0));
         person.setOthername(extractNameFromFhirNames(patient.getNameFirstRep().getGiven(), 1));
         person.setPhoneNumber(patient.getTelecomFirstRep().getValue());
-        // person.setAddress(patient.getAddress().get(0).getLine().get(0).getValue(););
+        person.setAddress(patient.getAddress().get(0).getLine().stream().findFirst().get().getValue());
         person.setPostalCode(patient.getAddress().stream().findFirst().get().getPostalCode());
         person.setDistrict(patient.getAddress().stream().findFirst().get().getDistrict());
         person.setSubCounty(patient.getAddress().stream().findFirst().get().getCity());
         person.setVillage(patient.getAddress().stream().findFirst().get().getState());
         person.setParish(patient.getAddress().stream().findFirst().get().getCountry());
         person.setBirthDate(patient.getBirthDate());
-        person.setMaritalStatus(patient.getMaritalStatus().getText());
+        person.setMaritalStatus(patient.getMaritalStatus().getCodingFirstRep().getDisplay());
         if (patient.getGender().toString() != null) {
            person.setGender(patient.getGender().toCode());
         }
