@@ -65,10 +65,16 @@ public class PersonController {
         patient.setActive(true);
         patient.setId(UUID.randomUUID().toString());
 
-        passport.setSystem("http://acme.com/MRNs").setValue(person.getPassport());
+        passport.setSystem("https://passports.go.ug")
+        .setValue(person.getPassport())
+        .setUse(Identifier.IdentifierUse.OFFICIAL)
+        .setType(new CodeableConcept().setText("Passport"));
         patient.addIdentifier(passport);
 
-        nationId.setSystem("http://acme.com/MRNs").setValue(person.getNationalId());
+        nationId.setSystem("https://www.nira.go.ug")
+        .setValue(person.getNationalId())
+        .setUse(Identifier.IdentifierUse.USUAL)
+        .setType(new CodeableConcept().setText("National ID No."));
         patient.addIdentifier(nationId);
 
         systemId.setSystem("http://acme.com/MRNs").setValue(person.getSystemId());
@@ -80,7 +86,8 @@ public class PersonController {
         patient.setBirthDate(person.getBirthDate());
 
         patient.addName()
-                .setText(person.getSurname())
+                // .setText(person.getSurname())
+                .setFamily(person.getSurname())
                 .addGiven(person.getGivenname())
                 .addGiven(person.getOthername());
 
@@ -112,7 +119,6 @@ public class PersonController {
                 patient.setMaritalStatus(createMaritalStatus("D", "Divorced"));
                 break;
             default:
-                // Handle other cases or defaults if needed
                 break;
         }
 
@@ -191,7 +197,11 @@ public class PersonController {
 
             List<Person> persons = list.stream()
                     .map(t -> (Patient) t.getResource()) // convert each entry to a resource inthis case its Patient
-                    .map(Person::convertFHIRPatientToPerson) // convert each patient resource into our Person Modal
+                    .map(p -> {
+                        Person person = new Person();
+                       person = person.convertFHIRPatientToPerson(p);
+                       return person;
+                    }) // convert each patient resource into our Person Modal
                     .toList(); // collection our converted Persons
 
             // personRepository.saveAll(persons);

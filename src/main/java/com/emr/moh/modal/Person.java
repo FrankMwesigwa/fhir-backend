@@ -3,13 +3,21 @@ package com.emr.moh.modal;
 import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.hibernate.annotations.GenericGenerator;
 import org.hl7.fhir.r4.model.ContactPoint;
 import org.hl7.fhir.r4.model.Enumerations;
+import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.StringType;
+
+import com.fasterxml.jackson.databind.deser.impl.CreatorCandidate.Param;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -50,67 +58,100 @@ public class Person {
     private Date birthDate;
     private String maritalStatus;
 
-    public static String extractNameFromFhirNames(List<StringType> stringType, int index) {
-        boolean check = stringType.size() >= 0; // check if index exists
-        return check ? stringType.get(index).asStringValue() : "";
+    private enum IdentifierType {
+        PASSPORT("Passport"), NATIONAL_ID("National ID No.");
+
+        private String type;
+
+        IdentifierType(String type) {
+            this.type = type;
+        }
+
+        public String getType() {
+            return type;
+        }
     }
 
-    public static Person convertFHIRPatientToPerson(Patient patient) {
+    private enum TelecomType {
+        PHONE("PHONE"), EMAIL("EMAIL");
+
+        private String type;
+
+        TelecomType(String type) {
+            this.type = type;
+        }
+
+        public String getType() {
+            return type;
+        }
+    }
+
+    // public String extractNameFromFhirNames(List<StringType> stringType, int index) {
+    //     return stringType.isEmpty() ? stringType.get(index).asStringValue() : "";
+    // }
+
+    public static String extractNameFromFhirNames(List<StringType> stringType , int index){
+        boolean check  =  stringType.size() >=0; // check if index exists
+      return check ? stringType.get(index).asStringValue() : "";
+      }
+
+    private static Optional<Identifier> getPatientIdentifier(Patient patient, String identifierTpe) {
+        return patient.getIdentifier().stream()
+                .filter(identifer -> identifer.getType().getText().equalsIgnoreCase(identifierTpe)).findFirst();
+    }
+
+    private String getPatientIdentifierValue(Patient patient, String identifierTpe) {
+
+        Optional<Identifier> passportOptional = getPatientIdentifier(patient, identifierTpe);
+        return passportOptional.isPresent() ? passportOptional.get().getValue() : "";
+    }
+
+    private Optional<ContactPoint> getPatientTelecom(Patient patient, String type) {
+        return patient.getTelecom().stream()
+        .filter(contactPoint -> contactPoint.getSystem() == ContactPoint.ContactPointSystem.EMAIL)
+                .findFirst();
+
+    }
+
+    private String getPatientTelecomValue(Patient patient, String type) {
+        Optional<ContactPoint> telecomOptional = getPatientTelecom(patient, type);
+        return telecomOptional.isPresent() ? telecomOptional.get().getValue() : "";
+    }
+
+    public Person convertFHIRPatientToPerson(Patient patient) {
+
         Person person = new Person();
         person.setId(patient.getId());
-        person.setPassport(patient.getIdentifier().get(0).getValue());
-        person.setNationalId(patient.getIdentifier().get(1).getValue());
-        person.setSystemId(patient.getIdentifier().get(2).getValue());
-        person.setPatientId(patient.getIdentifier().get(3).getValue());
-        person.setSurname(patient.getNameFirstRep().getText());
+        person.setPassport(getPatientIdentifierValue(patient, IdentifierType.PASSPORT.getType()));
+        person.setNationalId(getPatientIdentifierValue(patient, IdentifierType.NATIONAL_ID.getType()));
+        // person.setPatientId(patient.getIdentifier().get(3).getValue());
+        person.setSurname(patient.getNameFirstRep().getFamily());
         person.setGivenname(extractNameFromFhirNames(patient.getNameFirstRep().getGiven(), 0));
-        person.setOthername(extractNameFromFhirNames(patient.getNameFirstRep().getGiven(), 1));
+        // person.setOthername(extractNameFromFhirNames(patient.getNameFirstRep().getGiven(),1));
         person.setPhoneNumber(patient.getTelecomFirstRep().getValue());
-        person.setAddress(patient.getAddress().get(0).getLine().stream().findFirst().get().getValue());
+        // person.setAddress(patient.getAddress().get(0).getLine().stream().findFirst().get().getValue());
         person.setPostalCode(patient.getAddress().stream().findFirst().get().getPostalCode());
         person.setDistrict(patient.getAddress().stream().findFirst().get().getDistrict());
         person.setSubCounty(patient.getAddress().stream().findFirst().get().getCity());
         person.setVillage(patient.getAddress().stream().findFirst().get().getState());
         person.setParish(patient.getAddress().stream().findFirst().get().getCountry());
         person.setBirthDate(patient.getBirthDate());
-        person.setMaritalStatus(patient.getMaritalStatus().getCodingFirstRep().getDisplay());
+        if (patient.getMaritalStatus().getCodingFirstRep() != null) {
+            person.setMaritalStatus(patient.getMaritalStatus().getCodingFirstRep().getDisplay());
+        }
+        
         if (patient.getGender().toString() != null) {
-           person.setGender(patient.getGender().toCode());
+            person.setGender(patient.getGender().toCode());
         }
-        if (!patient.getTelecom().toString().isEmpty()) {
-            person.setEmail(patient.getTelecom().get(1).getValue());
-        }
+
+          // person.setLname(patient.getNameFirstRep().getGiven().stream().findFirst().isPresent() ?
+        // patient.getNameFirstRep().getGiven().stream().findFirst().get().asStringValue() : "");
+
+        person.setEmail(getPatientTelecomValue(patient, TelecomType.EMAIL.getType()));
+        // person.setPhoneNumber(getPatientTelecomValue(patient, TelecomType.PHONE.getType()));
+        // if (patient.getTelecom().get(1) != null) {
+        //person.setEmail(patient.getTelecom().stream().filter(contactPoint -> contactPoint.getSystem() == ContactPoint.ContactPointSystem.EMAIL));
+        // }
         return person;
     }
-
-    // public static Patient convertJsonToFHIR(Person person) {
-
-    //     Patient patient = new Patient();
-
-    //     patient.setId(UUID.randomUUID().toString());
-    //     patient.addIdentifier().setSystem("http://acme.com/MRNs").setValue("frank-emr");
-    //     patient.setActive(true);
-    //     patient.setBirthDate(person.getBirthDate());
-
-    //     patient.addName()
-    //             .setText(person.getFirstName())
-    //             .addGiven(person.getLastName())
-    //             .addGiven(person.getOtherName());
-
-    //     patient.addTelecom().setSystem(ContactPoint.ContactPointSystem.PHONE).setValue(person.getPhoneNumber());
-    //     patient.addTelecom().setSystem(ContactPoint.ContactPointSystem.EMAIL).setValue(person.getEmail());
-
-    //     patient.addAddress().setState(person.getVillage())
-    //             .setCity(person.getCity())
-    //             .setPostalCode(person.getPostalCode());
-
-    //     switch (person.getGender()) {
-    //         case "male" -> patient.setGender(Enumerations.AdministrativeGender.MALE);
-    //         case "female" -> patient.setGender(Enumerations.AdministrativeGender.FEMALE);
-    //         case "others" -> patient.setGender(Enumerations.AdministrativeGender.OTHER);
-    //     }
-
-    //     return patient;
-
-    // }
 }
