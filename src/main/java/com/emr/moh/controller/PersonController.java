@@ -3,11 +3,15 @@ package com.emr.moh.controller;
 import java.util.List;
 import java.util.UUID;
 
+import org.hl7.fhir.r4.model.Address;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.CodeType;
 import org.hl7.fhir.r4.model.ContactPoint;
 import org.hl7.fhir.r4.model.Enumerations;
+import org.hl7.fhir.r4.model.Extension;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Patient;
+import org.hl7.fhir.r4.model.StringType;
 import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -94,13 +98,38 @@ public class PersonController {
         patient.addTelecom().setSystem(ContactPoint.ContactPointSystem.PHONE).setValue(person.getPhoneNumber());
         patient.addTelecom().setSystem(ContactPoint.ContactPointSystem.EMAIL).setValue(person.getEmail());
 
-        patient.addAddress()
-                .addLine(person.getAddress())
-                .setState(person.getVillage())
-                .setCity(person.getSubCounty())
-                .setDistrict(person.getDistrict())
-                .setCountry(person.getParish())
-                .setPostalCode(person.getPostalCode());
+        Address address = new Address();
+            address.setCity(person.getCity());
+            address.setCountry(person.getCountry());
+            address.setDistrict(person.getDistrict());
+            address.setPostalCode(person.getPostalCode());
+
+        Extension villageExtension = new Extension();
+        villageExtension.setUrl("http://example/ext/address#village");
+        villageExtension.setValue(new StringType(person.getVillage()));
+
+        Extension subCountyExtension = new Extension();
+        subCountyExtension.setUrl("http://example/ext/address#subcounty");
+        subCountyExtension.setValue(new StringType(person.getSubCounty()));
+
+        Extension parishExtension = new Extension();
+        parishExtension.setUrl("http://example/ext/address#parish");
+        parishExtension.setValue(new StringType(person.getParish()));
+
+        address.addExtension(villageExtension);
+        address.addExtension(subCountyExtension);
+        address.addExtension(parishExtension);
+        
+        patient.addAddress(address);
+
+        // patient.addAddress()
+        //          .addLine(person.getAddress())
+        //          .setState(person.getVillage())
+        //          .setCity(person.getCity())
+        //          .setCountry(person.getCountry())
+        //          .setDistrict(person.getDistrict())
+        //          .setCountry(person.getCountry())
+        //          .setPostalCode(person.getPostalCode());
 
         switch (person.getGender()) {
             case "Male" -> patient.setGender(Enumerations.AdministrativeGender.MALE);

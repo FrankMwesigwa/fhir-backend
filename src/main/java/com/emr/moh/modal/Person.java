@@ -11,8 +11,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.hibernate.annotations.GenericGenerator;
+import org.hl7.fhir.r4.model.Address;
 import org.hl7.fhir.r4.model.ContactPoint;
 import org.hl7.fhir.r4.model.Enumerations;
+import org.hl7.fhir.r4.model.Extension;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.StringType;
@@ -48,6 +50,8 @@ public class Person {
     private String email;
     private String phoneNumber;
     private String address;
+    private String city;
+    private String country;
     private String village;
     private String parish;
     private String subCounty;
@@ -59,7 +63,7 @@ public class Person {
     private String maritalStatus;
 
     private enum IdentifierType {
-        PASSPORT("Passport"), NATIONAL_ID("National ID No.");
+        PASSPORT("Passport"), PATIENTID("Patient Unique  ID Code (UIC)"), NATIONAL_ID("National ID No.");
 
         private String type;
 
@@ -72,28 +76,10 @@ public class Person {
         }
     }
 
-    private enum TelecomType {
-        PHONE("PHONE"), EMAIL("EMAIL");
-
-        private String type;
-
-        TelecomType(String type) {
-            this.type = type;
-        }
-
-        public String getType() {
-            return type;
-        }
+    public static String extractNameFromFhirNames(List<StringType> stringType, int index) {
+        boolean check = stringType.size() > index; // check if index exists
+        return check ? stringType.get(index).asStringValue() : "";
     }
-
-    // public String extractNameFromFhirNames(List<StringType> stringType, int index) {
-    //     return stringType.isEmpty() ? stringType.get(index).asStringValue() : "";
-    // }
-
-    public static String extractNameFromFhirNames(List<StringType> stringType , int index){
-        boolean check  =  stringType.size() >=0; // check if index exists
-      return check ? stringType.get(index).asStringValue() : "";
-      }
 
     private static Optional<Identifier> getPatientIdentifier(Patient patient, String identifierTpe) {
         return patient.getIdentifier().stream()
@@ -108,50 +94,71 @@ public class Person {
 
     private Optional<ContactPoint> getPatientTelecom(Patient patient, String type) {
         return patient.getTelecom().stream()
-        .filter(contactPoint -> contactPoint.getSystem() == ContactPoint.ContactPointSystem.EMAIL)
+                .filter(contactPoint -> contactPoint.getSystem() == ContactPoint.ContactPointSystem.EMAIL)
                 .findFirst();
 
     }
 
-    private String getPatientTelecomValue(Patient patient, String type) {
-        Optional<ContactPoint> telecomOptional = getPatientTelecom(patient, type);
-        return telecomOptional.isPresent() ? telecomOptional.get().getValue() : "";
+    private String getPatientEmail(Patient patient) {
+        Optional<ContactPoint> optional = patient.getTelecom().stream()
+                .filter(contactPoint -> contactPoint.getSystem() == ContactPoint.ContactPointSystem.EMAIL)
+                .findFirst();
+        return optional.isPresent() ? optional.get().getValue() : "";
+    }
+
+    private String getPatientPhone(Patient patient) {
+        Optional<ContactPoint> optional = patient.getTelecom().stream()
+                .filter(contactPoint -> contactPoint.getSystem() == ContactPoint.ContactPointSystem.PHONE)
+                .findFirst();
+        return optional.isPresent() ? optional.get().getValue() : "";
+    }
+
+    private Optional<Extension> findExtensionByUrl(List<Extension> extensions , String extensionUrl) {
+        return extensions.stream().filter(e -> e.getUrl().equalsIgnoreCase(extensionUrl) ).findFirst();
+    }
+
+    private String findExtensionValue(List<Extension> extensions ,  String extensionUrl) {
+        Optional<Extension> optional = findExtensionByUrl(extensions , extensionUrl);
+        return optional.isPresent() ? optional.get().getValueAsPrimitive().getValueAsString() : "";
     }
 
     public Person convertFHIRPatientToPerson(Patient patient) {
+        Optional<Address> optionalAddress = patient.getAddress().stream().findFirst();
+       List<Extension> addressExtensions =  optionalAddress.get().getExtensionByUrl("http://fhir.openmrs.org/ext/address").getExtension();
+
+       System.out.println("ADRESS SIZE "+addressExtensions.size());
+
 
         Person person = new Person();
         person.setId(patient.getId());
         person.setPassport(getPatientIdentifierValue(patient, IdentifierType.PASSPORT.getType()));
         person.setNationalId(getPatientIdentifierValue(patient, IdentifierType.NATIONAL_ID.getType()));
-        // person.setPatientId(patient.getIdentifier().get(3).getValue());
+        person.setUniquePatientId(getPatientIdentifierValue(patient, IdentifierType.PATIENTID.getType()));
         person.setSurname(patient.getNameFirstRep().getFamily());
         person.setGivenname(extractNameFromFhirNames(patient.getNameFirstRep().getGiven(), 0));
-        // person.setOthername(extractNameFromFhirNames(patient.getNameFirstRep().getGiven(),1));
+        person.setOthername(extractNameFromFhirNames(patient.getNameFirstRep().getGiven(), 1));
         person.setPhoneNumber(patient.getTelecomFirstRep().getValue());
         // person.setAddress(patient.getAddress().get(0).getLine().stream().findFirst().get().getValue());
-        person.setPostalCode(patient.getAddress().stream().findFirst().get().getPostalCode());
-        person.setDistrict(patient.getAddress().stream().findFirst().get().getDistrict());
-        person.setSubCounty(patient.getAddress().stream().findFirst().get().getCity());
-        person.setVillage(patient.getAddress().stream().findFirst().get().getState());
-        person.setParish(patient.getAddress().stream().findFirst().get().getCountry());
+        person.setPostalCode(optionalAddress.isPresent() ? optionalAddress.get().getPostalCode() : "");
+        person.setDistrict(optionalAddress.isPresent() ? optionalAddress.get().getDistrict() : "");
+        person.setCity(optionalAddress.isPresent() ? optionalAddress.get().getCity() : "");
+        
+        person.setSubCounty(findExtensionValue(addressExtensions , "http://fhir.openmrs.org/ext/address#subcounty"));
+        person.setParish(findExtensionValue(addressExtensions , "http://fhir.openmrs.org/ext/address#parish"));
+        person.setVillage(findExtensionValue(addressExtensions , "http://fhir.openmrs.org/ext/address#village"));
+
+        person.setCountry(optionalAddress.isPresent() ? optionalAddress.get().getCountry() : "");
         person.setBirthDate(patient.getBirthDate());
         if (patient.getMaritalStatus().getCodingFirstRep() != null) {
             person.setMaritalStatus(patient.getMaritalStatus().getCodingFirstRep().getDisplay());
         }
-        
+
         if (patient.getGender().toString() != null) {
             person.setGender(patient.getGender().toCode());
         }
 
-          // person.setLname(patient.getNameFirstRep().getGiven().stream().findFirst().isPresent() ?
-        // patient.getNameFirstRep().getGiven().stream().findFirst().get().asStringValue() : "");
-
-        person.setEmail(getPatientTelecomValue(patient, TelecomType.EMAIL.getType()));
-        // person.setPhoneNumber(getPatientTelecomValue(patient, TelecomType.PHONE.getType()));
-        // if (patient.getTelecom().get(1) != null) {
-        //person.setEmail(patient.getTelecom().stream().filter(contactPoint -> contactPoint.getSystem() == ContactPoint.ContactPointSystem.EMAIL));
-        // }
+        person.setEmail(getPatientEmail(patient));
+        person.setPhoneNumber(getPatientPhone(patient));
         return person;
     }
 }
