@@ -113,20 +113,19 @@ public class Person {
         return optional.isPresent() ? optional.get().getValue() : "";
     }
 
-    private Optional<Extension> findExtensionByUrl(List<Extension> extensions , String extensionUrl) {
-        return extensions.stream().filter(e -> e.getUrl().equalsIgnoreCase(extensionUrl) ).findFirst();
-    }
+    // private Optional<Extension> findExtensionByUrl(List<Extension> extensions , String extensionUrl) {
+    //     return extensions.stream().filter(e -> e.getUrl().equalsIgnoreCase(extensionUrl) ).findFirst();
+    // }
 
-    private String findExtensionValue(List<Extension> extensions ,  String extensionUrl) {
-        Optional<Extension> optional = findExtensionByUrl(extensions , extensionUrl);
-        return optional.isPresent() ? optional.get().getValueAsPrimitive().getValueAsString() : "";
-    }
+    //     Optional<Extension> optional = findExtensionByUrl(extensions , extensionUrl);
+    //     return optional.isPresent() ? optional.get().getValueAsPrimitive().getValueAsString() : "";
+    // }
 
     public Person convertFHIRPatientToPerson(Patient patient) {
         Optional<Address> optionalAddress = patient.getAddress().stream().findFirst();
-       List<Extension> addressExtensions =  optionalAddress.get().getExtensionByUrl("http://fhir.openmrs.org/ext/address").getExtension();
+    //    List<Extension> addressExtensions =  optionalAddress.get().getExtensionByUrl("http://fhir.openmrs.org/ext/address").getExtension();
 
-       System.out.println("ADRESS SIZE "+addressExtensions.size());
+    //    System.out.println("ADRESS SIZE "+addressExtensions.size());
 
 
         Person person = new Person();
@@ -143,9 +142,9 @@ public class Person {
         person.setDistrict(optionalAddress.isPresent() ? optionalAddress.get().getDistrict() : "");
         person.setCity(optionalAddress.isPresent() ? optionalAddress.get().getCity() : "");
         
-        person.setSubCounty(findExtensionValue(addressExtensions , "http://fhir.openmrs.org/ext/address#subcounty"));
-        person.setParish(findExtensionValue(addressExtensions , "http://fhir.openmrs.org/ext/address#parish"));
-        person.setVillage(findExtensionValue(addressExtensions , "http://fhir.openmrs.org/ext/address#village"));
+        // person.setSubCounty(findExtensionValue(addressExtensions , "http://fhir.openmrs.org/ext/address#subcounty"));
+        // person.setParish(findExtensionValue(addressExtensions , "http://fhir.openmrs.org/ext/address#parish"));
+        // person.setVillage(findExtensionValue(addressExtensions , "http://fhir.openmrs.org/ext/address#village"));
 
         person.setCountry(optionalAddress.isPresent() ? optionalAddress.get().getCountry() : "");
         person.setBirthDate(patient.getBirthDate());
